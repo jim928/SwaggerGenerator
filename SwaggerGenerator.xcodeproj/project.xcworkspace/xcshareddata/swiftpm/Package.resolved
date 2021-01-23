@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "SightKit",
+        "repositoryURL": "https://github.com/zhanqi/SightKit.git",
+        "state": {
+          "branch": null,
+          "revision": "44891b6a3caa3275b97722f5166d14ef26f5f78e",
+          "version": "0.1.20"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

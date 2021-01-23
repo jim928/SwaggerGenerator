@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -11,6 +11,7 @@
 		3890CB9325BC7EFD00F09469 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3890CB9225BC7EFD00F09469 /* ViewController.swift */; };
 		3890CB9525BC7EFE00F09469 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3890CB9425BC7EFE00F09469 /* Assets.xcassets */; };
 		3890CB9825BC7EFE00F09469 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3890CB9625BC7EFE00F09469 /* Main.storyboard */; };
+		3890CBA325BC816400F09469 /* SightKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3890CBA225BC816400F09469 /* SightKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3890CBA325BC816400F09469 /* SightKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +81,9 @@
 			dependencies = (
 			);
 			name = SwaggerGenerator;
+			packageProductDependencies = (
+				3890CBA225BC816400F09469 /* SightKit */,
+			);
 			productName = SwaggerGenerator;
 			productReference = 3890CB8D25BC7EFD00F09469 /* SwaggerGenerator.app */;
 			productType = "com.apple.product-type.application";
@@ -106,6 +111,9 @@
 				Base,
 			);
 			mainGroup = 3890CB8425BC7EFD00F09469;
+			packageReferences = (
+				3890CBA125BC816400F09469 /* XCRemoteSwiftPackageReference "SightKit" */,
+			);
 			productRefGroup = 3890CB8E25BC7EFD00F09469 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -281,7 +289,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.jim.SwaggerGenerator;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jim.swaggergenerator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -302,7 +310,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.jim.SwaggerGenerator;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jim.swaggergenerator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -330,6 +338,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3890CBA125BC816400F09469 /* XCRemoteSwiftPackageReference "SightKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zhanqi/SightKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3890CBA225BC816400F09469 /* SightKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3890CBA125BC816400F09469 /* XCRemoteSwiftPackageReference "SightKit" */;
+			productName = SightKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3890CB8525BC7EFD00F09469 /* Project object */;
 }
