@@ -24,14 +24,22 @@ class ViewController: NSViewController {
         chooseBtn.action = #selector(chooseTap)
     }
     @objc func chooseTap(){
-        panel = NSOpenPanel()
-        panel.canChooseFiles = true
+        let panel = NSOpenPanel()
+        panel.prompt = "确定";
+        panel.message = "选择swagger的json文件"
         panel.canChooseDirectories = false
+        panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
-        panel.delegate = self
-        let finded = panel.runModal()
-        if finded == .OK {
-            
+        panel.allowedFileTypes = ["json"]
+        panel.beginSheetModal(for: NSApp.mainWindow ?? NSWindow()) { (response) in
+            if response == .OK {
+                print(panel.urls)
+                if let url = panel.urls.first ,let data = try? Data(contentsOf: url){
+                    
+                }
+            }else if response == .cancel {
+                print("cancel")
+            }
         }
     }
     override var representedObject: Any? {
@@ -43,8 +51,3 @@ class ViewController: NSViewController {
 
 }
 
-extension ViewController : NSOpenSavePanelDelegate {
-    func panelSelectionDidChange(_ sender: Any?) {
-        print("zlog",#file,#function,#line,panel.url)
-    }
-}
