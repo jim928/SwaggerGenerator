@@ -30,9 +30,8 @@ class ViewController: NSViewController {
 
         textField.stringValue = lastUrl?.absoluteString ?? ""
         
-        print(getuserinfo)
-        print(getuserinfo)
-
+        let scrollView = NSScrollView().addTo(cView).csFullfillHorizontal().cstoBottomOf(view: textField).cstoTopOf(view: bottomBar)
+        
     }
     @objc func chooseTap(){
         let panel = NSOpenPanel()
@@ -78,11 +77,17 @@ class ViewController: NSViewController {
         //
 
 
-        class UrlItem {
+        import Foundation
+
+
+        enum SGParamPosition {
+            case inBody,inQuery,inPath
+        }
+
+        class SGUrlItem {
             var url:String = ""
             var method:String = "GET"
-            var isParamInQuerry:Bool = false
-            var isParamInPath:Bool = false
+            var paramMap:[String:(SGParamPosition,Bool)] = [:]
         }
 
 
@@ -111,9 +116,6 @@ class ViewController: NSViewController {
             for method in allMethods {
                 //(method,valueMethod)
                 let valueMethod = value[method]
-                
-                var isParamInQuerry = false
-                var isParamInPath = false
                 let fixUrl = url.components(separatedBy: "/{").first!
                 
                 //样例 "/brand/detail/{brandId}"
@@ -130,24 +132,34 @@ class ViewController: NSViewController {
                 itemName = itemName.replacingOccurrences(of: "/", with: "_")
                 itemName = itemName+"_"+method
                 
+                //summary
+                var desStr = valueMethod["summary"].stringValue
+                if (valueMethod["tags"].arrayValue.count > 0){
+                    desStr += "  ("
+                    for (index,tag) in valueMethod["tags"].arrayValue.enumerated(){
+                        for tagDic in json["tags"].arrayValue {
+                            if tagDic["name"].stringValue == tag.stringValue {
+                                desStr += tagDic["description"].stringValue
+                                if index != valueMethod["tags"].arrayValue.count - 1 {
+                                    desStr += ","
+                                }
+                            }
+                        }
+                    }
+                    desStr += ")"
+                }
+                
                 str.newLine(2)
                 let params = valueMethod["parameters"].arrayValue
                 if (params.count > 0){
                     str += """
-                /** \(valueMethod["summary"].stringValue)
+                /** \(desStr)
                  ## 参数说明
                  ```
                 """
                     str.newLine()
                     
                     for paramItem in params {
-                        if paramItem["in"].stringValue == "path" {
-                            isParamInPath = true
-                        }
-                        if paramItem["in"].stringValue == "query" {
-                            isParamInQuerry = true
-                        }
-                        
                         str.addSpace(1)
                         str += "\(paramItem["name"].stringValue):\(paramItem["type"].stringValue.typeFix)"
                         if paramItem["required"].boolValue {
@@ -162,18 +174,45 @@ class ViewController: NSViewController {
                     */
                     """
                 }else{
-                    str += "/// \(valueMethod["summary"].stringValue)"
+                    str += "/// \(desStr)"
                 }
                 
                 str += """
 
-                    let \(itemName):UrlItem = {
-                        let item = UrlItem()
+                    let \(itemName):SGUrlItem = {
+                        let item = SGUrlItem()
                         item.url = "\(fixUrl)"
                         item.method = "\(method)"
-                        item.isParamInQuerry = \(isParamInQuerry)
-                        item.isParamInPath = \(isParamInPath)
                     """
+                str.newLine()
+                
+                if (params.count > 0){
+                    str += """
+                        item.paramMap = [
+                    """
+                    for (index,paramItem) in params.enumerated(){
+                        str.newLine()
+                        var positionStr = ".inBody"
+                        let isRequiredStr = paramItem["required"].boolValue ? "true" : "false"
+                        if (paramItem["in"].stringValue == "query") {
+                            positionStr = ".inQuery"
+                        }
+                        if (paramItem["in"].stringValue == "path") {
+                            positionStr = ".inPath"
+                        }
+                        
+                        str += """
+                                "\(paramItem["name"].stringValue)":(\(positionStr),\(isRequiredStr))
+                        """
+                        if (index != params.count - 1){
+                            str += ","
+                        }
+                    }
+                    str.newLine()
+                    str += """
+                        ]
+                    """
+                }
                 str.newLine()
                 str += """
                     return item
@@ -185,6 +224,8 @@ class ViewController: NSViewController {
 
         let data1 = str.data(using: .utf8)
         data1?.saveToPath(path: documentPath + "/str.swift")
+        
+        
     }
     @objc func compileTap(){
         startProgress()
@@ -213,25 +254,34 @@ var lastUrl : URL? = {
     }
 }
 
-class UrlItem {
+class SGUrlItem {
     var url:String = ""
     var method:String = "GET"
-    var isParamInQuerry:Bool = false
-    var isParamInPath:Bool = false
+    var paramMap:[String:(SGParamPosition,Bool)] = [:]
 }
 
-/** 会员登录
+enum SGParamPosition {
+    case inBody,inQuerry,inPath
+}
+
+/** 修改密码
  ## 参数说明
  ```
- password:String
- username:String
- */
-let getuserinfo:UrlItem = {
-    let item = UrlItem()
-    item.url = "this is url"
-    item.method = "get or post"
+ authCode:String  required
+ password:String  required
+ telephone:String  required
+*/
+let sso_updatePassword_post:SGUrlItem = {
+    let item = SGUrlItem()
+    item.url = "/sso/updatePassword"
+    item.method = "post"
+    item.paramMap = [
+        "authCode":(.inBody,true)
+    ]
     return item
 }()
+
+
 
 
 extension String {
