@@ -12,7 +12,6 @@ class ViewController: NSViewController {
 
     var textField:NSTextField!
     var panel:NSOpenPanel = NSOpenPanel()
-    var json:SKJSON?
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -57,9 +56,7 @@ class ViewController: NSViewController {
         }
     }
     func startProgress(){
-        if let url = lastUrl,let data = try? Data(contentsOf: url) ,let json = try? SKJSON(data: data){
-            self.json = json
-        }else{
+        guard let fileUrl = lastUrl,let data = try? Data(contentsOf: fileUrl) ,let json = try? SKJSON(data: data) else{
             let alert = NSAlert()
             alert.messageText = "提示"
             alert.informativeText = "解析失败"
@@ -71,41 +68,120 @@ class ViewController: NSViewController {
             return
         }
         
-        print(documentPath)
+        //预设文件开头
         var str = """
         //
         //  AppRqDefines.swift
         //
         //
-        //  Created by SwaggerGenerator.
+        //  Created by SwaggerGenerator on \(Date().stringWith(format: .yyyy_MM_ddHHmmssSSS)).
         //
+
+
+        class UrlItem {
+            var url:String = ""
+            var method:String = "GET"
+            var isParamInQuerry:Bool = false
+            var isParamInPath:Bool = false
+        }
 
 
         """
         var addStr = ""
         
-        if var host = json?["host"].stringValue {
-            if !host.hasPrefix("http://"){
-                host = "http://" + host
-            }
-            if let basePath = json?["basePath"].stringValue{
-                host = host + basePath
-            }
-            
-            addStr = """
+        //解析host
+        var host = json["host"].stringValue
+        if !host.hasPrefix("http://"){
+            host = "http://" + host
+        }
+        let basePath = json["basePath"].stringValue
+        host = host + basePath
+        addStr = """
             var hostUrl = "\(host)"
 
-
             """
-            str = String(format: "%@\n%@", str,addStr)
-        }
+        str = String(format: "%@\n%@", str,addStr)
         
-        addStr = "enum AppURL : String{"
-        str = String(format: "%@\n%@", str,addStr)
-        addStr = "    case requestUserInfor = \"m/swift/url\""
-        str = String(format: "%@\n%@", str,addStr)
-        addStr = "}"
-        str = String(format: "%@\n%@", str,addStr)
+        //创建url对象
+        let paths = json["paths"].dictionaryValue
+        let pathsAllKeys = paths.keys.sorted()
+        for url in pathsAllKeys {
+            let value = json["paths"][url]
+            let allMethods = value.dictionaryValue.keys.sorted()
+            for method in allMethods {
+                //(method,valueMethod)
+                let valueMethod = value[method]
+                
+                var isParamInQuerry = false
+                var isParamInPath = false
+                let fixUrl = url.components(separatedBy: "/{").first!
+                
+                //样例 "/brand/detail/{brandId}"
+                var itemName = String(format: "%@", url)
+                if itemName.hasPrefix("/") {
+                    itemName = String(itemName.suffix(itemName.count-1))
+                }
+                
+                let array = itemName.components(separatedBy: "/{")
+                if array.count >= 2 {
+                    itemName = array.first!
+                }
+                
+                itemName = itemName.replacingOccurrences(of: "/", with: "_")
+                itemName = itemName+"_"+method
+                
+                str.newLine(2)
+                let params = valueMethod["parameters"].arrayValue
+                if (params.count > 0){
+                    str += """
+                /** \(valueMethod["summary"].stringValue)
+                 ## 参数说明
+                 ```
+                """
+                    str.newLine()
+                    
+                    for paramItem in params {
+                        if paramItem["in"].stringValue == "path" {
+                            isParamInPath = true
+                        }
+                        if paramItem["in"].stringValue == "query" {
+                            isParamInQuerry = true
+                        }
+                        
+                        str.addSpace(1)
+                        str += "\(paramItem["name"].stringValue):\(paramItem["type"].stringValue.typeFix)"
+                        if paramItem["required"].boolValue {
+                            str += "  required"
+                        }
+                        if paramItem["default"].stringValue.count > 0 {
+                            str += "  default:\(paramItem["default"].stringValue)"
+                        }
+                        str.newLine()
+                    }
+                    str += """
+                    */
+                    """
+                }else{
+                    str += "/// \(valueMethod["summary"].stringValue)"
+                }
+                
+                str += """
+
+                    let \(itemName):UrlItem = {
+                        let item = UrlItem()
+                        item.url = "\(fixUrl)"
+                        item.method = "\(method)"
+                        item.isParamInQuerry = \(isParamInQuerry)
+                        item.isParamInPath = \(isParamInPath)
+                    """
+                str.newLine()
+                str += """
+                    return item
+                }()
+                """
+                
+            }
+        }
 
         let data1 = str.data(using: .utf8)
         data1?.saveToPath(path: documentPath + "/str.swift")
@@ -140,7 +216,8 @@ var lastUrl : URL? = {
 class UrlItem {
     var url:String = ""
     var method:String = "GET"
-    var isParamInUrl:Bool = false
+    var isParamInQuerry:Bool = false
+    var isParamInPath:Bool = false
 }
 
 /** 会员登录
@@ -156,3 +233,35 @@ let getuserinfo:UrlItem = {
     return item
 }()
 
+
+extension String {
+    func subString(from: Int, length:Int) -> String {
+        let startIndex = self.index(self.startIndex, offsetBy: from)
+        let endIndex = self.index(self.startIndex, offsetBy: from + length)
+        return String(self[startIndex...endIndex])
+    }
+}
+
+extension String {
+    mutating func addSpace(_ num:Int){
+        self = self+String(repeating: " ", count: num)
+    }
+    mutating func newLine(_ num:Int = 1){
+        self = self+String(repeating: "\n", count: num)
+    }
+}
+
+extension String {
+    var typeFix:String {
+        if (self == "string"){
+            return "String"
+        }
+        if (self == "integer"){
+            return "Int"
+        }
+        if (self == "array"){
+            return "Array"
+        }
+        return self
+    }
+}
