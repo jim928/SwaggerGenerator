@@ -31,7 +31,7 @@ class ViewController: NSViewController {
         textField.stringValue = lastUrl?.absoluteString ?? ""
         
         let scrollView = NSScrollView().addTo(cView).csFullfillHorizontal().cstoBottomOf(view: textField).cstoTopOf(view: bottomBar)
-        
+        print(documentPath)
     }
     @objc func chooseTap(){
         let panel = NSOpenPanel()
@@ -73,23 +73,30 @@ class ViewController: NSViewController {
         //  AppRqDefines.swift
         //
         //
-        //  Created by SwaggerGenerator on \(Date().stringWith(format: .yyyy_MM_ddHHmmssSSS)).
+        //  Created by SwaggerGenerator on \(Date().stringWith(format: .yyyy_MM_ddHHmmssSSS))
         //
 
 
         import Foundation
 
 
+        /** 参数处理方式（where to put the parameter
+         ## 使用示例
+         ```
+         path, e.g. /users/{id};
+         query, e.g. /users?role=admin;
+         header, e.g. X-MyHeader: Value;
+         cookie, e.g. Cookie: debug=0;
+        */
         enum SGParamPosition {
             case inBody,inQuery,inPath
         }
 
-        class SGUrlItem {
+        class SGItem {
             var url:String = ""
             var method:String = "GET"
-            var paramMap:[String:(SGParamPosition,Bool)] = [:]
+            var paramMap:[(name:String,typeStr:String,paramPosition:SGParamPosition,isRequied:Bool)] = []
         }
-
 
         """
         var addStr = ""
@@ -106,7 +113,14 @@ class ViewController: NSViewController {
 
             """
         str = String(format: "%@\n%@", str,addStr)
-        
+            
+        str.newLine(1)
+        str += """
+            // MARK: - UrlItems
+
+            extension SGItem {
+            """
+
         //创建url对象
         let paths = json["paths"].dictionaryValue
         let pathsAllKeys = paths.keys.sorted()
@@ -153,15 +167,15 @@ class ViewController: NSViewController {
                 let params = valueMethod["parameters"].arrayValue
                 if (params.count > 0){
                     str += """
-                /** \(desStr)
-                 ## 参数说明
-                 ```
+                    /** \(desStr)
+                    ## 参数说明
+                    ```
                 """
                     str.newLine()
                     
                     for paramItem in params {
                         str.addSpace(1)
-                        str += "\(paramItem["name"].stringValue):\(paramItem["type"].stringValue.typeFix)"
+                        str += "    \(paramItem["name"].stringValue):\(paramItem["type"].stringValue.typeFix)"
                         if paramItem["required"].boolValue {
                             str += "  required"
                         }
@@ -171,26 +185,26 @@ class ViewController: NSViewController {
                         str.newLine()
                     }
                     str += """
-                    */
+                        */
                     """
                 }else{
-                    str += "/// \(desStr)"
+                    str += "    /// \(desStr)"
                 }
                 
                 str += """
 
-                    let \(itemName):SGUrlItem = {
-                        let item = SGUrlItem()
-                        item.url = "\(fixUrl)"
-                        item.method = "\(method)"
+                        static let \(itemName):SGItem = {
+                            let item = SGItem()
+                            item.url = "\(fixUrl)"
+                            item.method = "\(method)"
                     """
                 str.newLine()
                 
                 if (params.count > 0){
                     str += """
-                        item.paramMap = [
+                            item.paramMap = [
                     """
-                    for (index,paramItem) in params.enumerated(){
+                    for (_,paramItem) in params.enumerated(){
                         str.newLine()
                         var positionStr = ".inBody"
                         let isRequiredStr = paramItem["required"].boolValue ? "true" : "false"
@@ -202,26 +216,35 @@ class ViewController: NSViewController {
                         }
                         
                         str += """
-                                "\(paramItem["name"].stringValue)":(\(positionStr),\(isRequiredStr))
+                                    ("\(paramItem["name"].stringValue)","\(paramItem["type"].stringValue.typeFix)",\(positionStr),\(isRequiredStr)),
                         """
-                        if (index != params.count - 1){
-                            str += ","
-                        }
                     }
                     str.newLine()
                     str += """
-                        ]
+                            ]
                     """
+                    str.newLine()
                 }
-                str.newLine()
                 str += """
-                    return item
-                }()
+                        return item
+                    }()
                 """
-                
             }
         }
+        
+        str += """
 
+
+            }
+            """
+        //数据model
+        str.newLine(2)
+        str += """
+            // MARK: - Models
+
+            """
+
+        
         let data1 = str.data(using: .utf8)
         data1?.saveToPath(path: documentPath + "/str.swift")
         
@@ -254,7 +277,7 @@ var lastUrl : URL? = {
     }
 }
 
-class SGUrlItem {
+class SGItem {
     var url:String = ""
     var method:String = "GET"
     var paramMap:[String:(SGParamPosition,Bool)] = [:]
@@ -271,8 +294,8 @@ enum SGParamPosition {
  password:String  required
  telephone:String  required
 */
-let sso_updatePassword_post:SGUrlItem = {
-    let item = SGUrlItem()
+let sso_updatePassword_post:SGItem = {
+    let item = SGItem()
     item.url = "/sso/updatePassword"
     item.method = "post"
     item.paramMap = [
