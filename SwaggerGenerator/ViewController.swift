@@ -98,6 +98,12 @@ class ViewController: NSViewController {
             var paramMap:[(name:String,typeStr:String,paramPosition:SGParamPosition,isRequied:Bool)] = []
         }
 
+        class SGResponseItem: NSObject {
+            enum CodingKeys: String, CodingKey {
+                case extensionStr = "description"
+            }
+        }
+
         """
         var addStr = ""
         
@@ -237,6 +243,8 @@ class ViewController: NSViewController {
 
             }
             """
+        
+        
         //数据model
         str.newLine(2)
         str += """
@@ -244,7 +252,64 @@ class ViewController: NSViewController {
 
             """
 
-        
+        let definitions = json["definitions"].dictionaryValue
+        for (_,key) in definitions.keys.sorted().enumerated(){
+            let className = key.replacingOccurrences(of: "«", with: "_").replacingOccurrences(of: "»", with: "")
+            let value = json["definitions"][key]
+            let type = value["type"].stringValue
+            if type == "object" {
+                str += """
+
+                class \(className): SGResponseItem {
+
+                """
+                
+                let pKeys = value["properties"].dictionaryValue.keys.sorted()
+                for (_,propertyKey) in pKeys.enumerated(){
+                    let propertyValue = value["properties"][propertyKey]
+                    let propertyDes = propertyValue["description"].stringValue
+                    if propertyDes.count > 0 {
+                        str += """
+                            /// \(propertyDes)
+
+                        """
+                    }
+                    let keyFix = propertyKey.keyFix
+                    if propertyValue["type"].stringValue == "array"{
+                        var elementType = propertyValue["items"]["originalRef"].stringValue.classFix
+                        if elementType.count == 0 { elementType = "Any" }
+                        str += """
+                            var \(keyFix):[\(elementType)] = []
+
+                        """
+                    }
+                    else {
+                        var elementType = propertyValue["originalRef"].stringValue.classFix
+                        if elementType.count == 0 {
+                            elementType = propertyValue["type"].stringValue.typeFix
+                        }
+                        if elementType.count == 0 || elementType == "object" {
+                            elementType = "Any"
+                            
+                        }
+                        str += """
+                            var \(keyFix):\(elementType)?
+
+                        """
+                    }
+                }
+                str += """
+                }
+                """
+            }else{
+                str.newLine()
+                str += """
+                typealias \(className) = \(type.typeFix)
+                """
+            }
+        }
+
+        //写入文件
         let data1 = str.data(using: .utf8)
         data1?.saveToPath(path: documentPath + "/str.swift")
         
@@ -335,6 +400,43 @@ extension String {
         if (self == "array"){
             return "Array"
         }
+        if (self == "number"){
+            return "Float"
+        }
         return self
+    }
+}
+
+extension String {
+    var keyFix:String {
+        if (self == "description") {
+            return "descriptionStr"
+        }
+        return self
+    }
+}
+
+extension String {
+    var defaultValue:String {
+        if (self == "String"){
+            return ""
+        }
+        if (self == "Int"){
+            return "0"
+        }
+        if (self == "Array"){
+            return "[]"
+        }
+        if (self == "Float"){
+            return "0"
+        }
+        return self
+    }
+}
+
+extension String {
+    var classFix:String {
+        //  获取类名的修正，例如： "originalRef":"CommonPage«AgCommission»",
+        return (self.components(separatedBy: "«").last ?? self).replacingOccurrences(of: "»", with: "")
     }
 }
