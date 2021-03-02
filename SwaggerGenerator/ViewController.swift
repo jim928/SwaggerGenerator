@@ -100,7 +100,7 @@ class ViewController: NSViewController {
 
         class SGResponseItem: NSObject {
             enum CodingKeys: String, CodingKey {
-                case extensionStr = "description"
+                case description_str = "description"
             }
         }
 
@@ -254,7 +254,7 @@ class ViewController: NSViewController {
 
         let definitions = json["definitions"].dictionaryValue
         for (_,key) in definitions.keys.sorted().enumerated(){
-            let className = key.replacingOccurrences(of: "«", with: "_").replacingOccurrences(of: "»", with: "")
+            let className = key.classFix
             let value = json["definitions"][key]
             let type = value["type"].stringValue
             if type == "object" {
@@ -410,7 +410,7 @@ extension String {
 extension String {
     var keyFix:String {
         if (self == "description") {
-            return "descriptionStr"
+            return "description_str"
         }
         return self
     }
@@ -436,7 +436,8 @@ extension String {
 
 extension String {
     var classFix:String {
-        //  获取类名的修正，例如： "originalRef":"CommonPage«AgCommission»",
-        return (self.components(separatedBy: "«").last ?? self).replacingOccurrences(of: "»", with: "")
+        //  获取类名的修正，例如： "originalRef":"CommonPage«AgCommission»", 修正为类名 CommonPage_AgCommission
+        //  特殊样例 : "CommonResult«Map«string,object»»"
+        return self.replacingOccurrences(of: "«", with: "_").replacingOccurrences(of: "»", with: "").replacingOccurrences(of: ",", with: "_")
     }
 }
