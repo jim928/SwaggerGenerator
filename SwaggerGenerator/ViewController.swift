@@ -8,11 +8,12 @@
 import Cocoa
 import SightKit
 
+//https://wdpm.gitbook.io/swagger-documentation/swagger-specification/describing-parameters
 class ViewController: NSViewController {
 
     var textField:NSTextField!
     var panel:NSOpenPanel = NSOpenPanel()
-    var pathArray:[(className:String,url:String,method:String,paramMap:SGParamMapType)] = []
+    var pathArray:[(className:String,url:String,method:String,paramMap:[SGParamItem])] = []
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -92,12 +93,23 @@ class ViewController: NSViewController {
          cookie, e.g. Cookie: debug=0;
         */
         public enum SGParamPosition {
-            case inBody,inQuery,inPath
+            case inBody,inQuery,inPath,inHeader
         }
         
-        //太长了，来一个简写
-        public typealias SGParamMapType = [(name: String, typeStr: String, paramPosition: SGParamPosition, isRequied: Bool)]
+        public struct SGParamItem{
+            public var name:String = ""
+            public var typeStr:String = "String"
+            public var paramPosition:SGParamPosition = .inBody
+            public var isRequired = false
+            public var value:Any? = nil
+        }
 
+        public protocol SGCommonUrlProtocol {
+            var url:String { get set }
+            var method:String { get set }
+            var paramMap:[String:SGParamItem] { get set }
+        }
+        
         public class SGResponseItem: NSObject {
             public enum CodingKeys: String, CodingKey {
                 case description_str = "description"
@@ -105,7 +117,6 @@ class ViewController: NSViewController {
         }
 
         """
-        var addStr = ""
         
         //解析host
         var host = json["host"].stringValue
@@ -114,11 +125,11 @@ class ViewController: NSViewController {
         }
         let basePath = json["basePath"].stringValue
         host = host + basePath
-        addStr = """
+        str += """
+
             public var hostUrl = "\(host)"
 
             """
-        str = String(format: "%@\n%@", str,addStr)
             
         str.newLine(1)
         str += """
@@ -199,16 +210,16 @@ class ViewController: NSViewController {
                 
                 str += """
 
-                        public class \(itemName) {
+                        public class \(itemName):SGCommonUrlProtocol {
                             public var url = "\(fixUrl)"
                             public var method = "\(method)"
                     """
                 str.newLine()
                 
-                var paramsArray:SGParamMapType = []
+                var paramsArray:[SGParamItem] = []
                 if (params.count > 0){
                     str += """
-                            public var paramMap:SGParamMapType = [
+                            public var paramMap:[String:SGParamItem] = [
                     """
                     for (_,paramItem) in params.enumerated(){
                         str.newLine()
@@ -227,11 +238,28 @@ class ViewController: NSViewController {
                             position = .inPath
                         }
                         
+                        var elementType = paramItem["schema"]["originalRef"].stringValue.classFix
+                        if elementType.count == 0 {
+                            if paramItem["type"].stringValue == "array" {
+                                elementType = "[\(paramItem["items"]["type"].stringValue.typeFix)]"
+                            }else{
+                                elementType = paramItem["type"].stringValue.typeFix
+                                
+                                if elementType == "ref"{
+                                    elementType = "Int"
+                                }
+                            }
+                        }
+                        if elementType.count == 0 || elementType == "object" {
+                            elementType = "Any"
+                        }
+
+                        
                         str += """
-                                    ("\(paramItem["name"].stringValue)","\(paramItem["type"].stringValue.typeFix)",\(positionStr),\(isRequiredStr)),
+                                    "\(paramItem["name"].stringValue)":SGParamItem(name: "\(paramItem["name"].stringValue)", typeStr: "\(elementType)", paramPosition: \(positionStr), isRequired: \(isRequiredStr), value: nil),
                         """
                         
-                        paramsArray.append((paramItem["name"].stringValue,paramItem["type"].stringValue.typeFix,position,isRequired))
+                        paramsArray.append(SGParamItem(name: paramItem["name"].stringValue, typeStr: elementType, paramPosition: position, isRequired: isRequired, value: nil))
                     }
                     str.newLine()
                     str += """
@@ -240,7 +268,7 @@ class ViewController: NSViewController {
                     str.newLine()
                 }else{
                     str += """
-                            public var paramMap:SGParamMapType = []
+                            public var paramMap:[String:SGParamItem] = [:]
 
                     """
                 }
@@ -248,7 +276,7 @@ class ViewController: NSViewController {
                     }
                 """
                 
-                self.pathArray.append((className: "SGUrl"+itemName, url: fixUrl, method: method, paramMap: paramsArray))
+                self.pathArray.append((className: itemName, url: fixUrl, method: method, paramMap: paramsArray))
             }
         }
         
@@ -304,7 +332,6 @@ class ViewController: NSViewController {
                         }
                         if elementType.count == 0 || elementType == "object" {
                             elementType = "Any"
-                            
                         }
                         str += """
                             public var \(keyFix):\(elementType)?
@@ -341,32 +368,49 @@ class ViewController: NSViewController {
 
 
         import Foundation
+        import SightKit
 
+        func sgRequest(item:SGCommonUrlProtocol,result:@escaping ((SKResult)->Void)){
 
-        /** 参数处理方式（where to put the parameter
-         ## 使用示例
-         ```
-         path, e.g. /users/{id};
-         query, e.g. /users?role=admin;
-         header, e.g. X-MyHeader: Value;
-         cookie, e.g. Cookie: debug=0;
-        */
-        public enum SGParamPosition {
-            case inBody,inQuery,inPath
-        }
-        
-        //太长了，来一个简写
-        public typealias SGParamMapType = [(name: String, typeStr: String, paramPosition: SGParamPosition, isRequied: Bool)]
-
-        public class SGResponseItem: NSObject {
-            public enum CodingKeys: String, CodingKey {
-                case description_str = "description"
-            }
         }
 
         """
-        var rqaddStr = ""
+        for (_,path) in self.pathArray.enumerated(){
+            rqstr += """
+
+            public extension SGUrl.\(path.className) {
+                static func rq(
+            """
+            
+            for (_,param) in path.paramMap.enumerated(){
+                rqstr += "\(param.name):\(param.typeStr),"
+            }
+            
+            rqstr += "result:@escaping ((SKResult)->Void)"
+            
+            rqstr += "){"
+            rqstr += """
+                    
+                    let item = SGUrl.\(path.className)()
+            """
+            for (_,param) in path.paramMap.enumerated(){
+                rqstr += """
+
+                    item.paramMap["\(param.name)"]?.value = \(param.name)
+            """
+            }
+            rqstr += """
+
+                    sgRequest(item: item, result: result)
+                }
+            }
+            """
+        }
         
+        //写入文件 AppURLDefines
+        let data2 = rqstr.data(using: .utf8)
+        data2?.saveToPath(path: documentPath + "/AppRequestDefines.swift")
+
     }
     @objc func compileTap(){
         startProgress()
@@ -404,11 +448,16 @@ var lastUrl : URL? = {
  cookie, e.g. Cookie: debug=0;
 */
 public enum SGParamPosition {
-    case inBody,inQuery,inPath
+    case inBody,inQuery,inPath,inHeader
 }
 
-//太长了，来一个简写
-public typealias SGParamMapType = [(name: String, typeStr: String, paramPosition: SGParamPosition, isRequied: Bool)]
+public struct SGParamItem{
+    public var name:String = ""
+    public var typeStr:String = "String"
+    public var paramPosition:SGParamPosition = .inBody
+    public var isRequired = false
+    public var value:Any? = nil
+}
 
 public class SGResponseItem: NSObject {
     public enum CodingKeys: String, CodingKey {
