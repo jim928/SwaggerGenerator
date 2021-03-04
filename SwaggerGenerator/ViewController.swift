@@ -92,10 +92,10 @@ class ViewController: NSViewController {
          header, e.g. X-MyHeader: Value;
          cookie, e.g. Cookie: debug=0;
         */
-        public enum SGParamPosition {
-            case inBody,inQuery,inPath,inHeader
+        public enum SGParamPosition : Int {
+            case inBody = 0,inQuery,inPath,inHeader
         }
-        
+
         public struct SGParamItem{
             public var name:String = ""
             public var typeStr:String = "String"
@@ -125,6 +125,9 @@ class ViewController: NSViewController {
         }
         let basePath = json["basePath"].stringValue
         host = host + basePath
+        if host.hasSuffix("/") {
+            host = String(host.prefix(host.count-1))
+        }
         str += """
 
             public var hostUrl = "\(host)"
@@ -147,7 +150,7 @@ class ViewController: NSViewController {
             for method in allMethods {
                 //(method,valueMethod)
                 let valueMethod = value[method]
-                let fixUrl = url.components(separatedBy: "/{").first!
+                let fixUrl = url
                 
                 //样例 "/brand/detail/{brandId}"
                 var itemName = String(format: "%@", url)
@@ -236,6 +239,10 @@ class ViewController: NSViewController {
                         if (paramItem["in"].stringValue == "path") {
                             positionStr = ".inPath"
                             position = .inPath
+                        }
+                        if (paramItem["in"].stringValue == "header") {
+                            positionStr = ".header"
+                            position = .inHeader
                         }
                         
                         var elementType = paramItem["schema"]["originalRef"].stringValue.classFix
@@ -371,7 +378,13 @@ class ViewController: NSViewController {
         import SightKit
 
         func sgRequest(item:SGCommonUrlProtocol,result:@escaping ((SKResult)->Void)){
-
+            let rq = SKRq().wUrl(hostUrl + item.url).wMethod(item.method)
+            for element in item.paramMap.values {
+                if let value = element.value , let  position = SKParamPosition.init(rawValue:element.paramPosition.rawValue) {
+                    rq.wParam(key: element.name, value: value, position: position)
+                }
+            }
+            rq.resume(result)
         }
 
         """
@@ -383,7 +396,7 @@ class ViewController: NSViewController {
             """
             
             for (_,param) in path.paramMap.enumerated(){
-                rqstr += "\(param.name):\(param.typeStr),"
+                rqstr += "\(param.name):\(param.typeStr)?,"
             }
             
             rqstr += "result:@escaping ((SKResult)->Void)"
