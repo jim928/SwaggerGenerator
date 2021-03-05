@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		047D529825F204A80064BB14 /* SGModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047D529725F204A80064BB14 /* SGModels.swift */; };
+		047D529B25F23FCB0064BB14 /* OldVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047D529A25F23FCB0064BB14 /* OldVC.swift */; };
 		388E06ED25C077880059066F /* api-docs.json in Resources */ = {isa = PBXBuildFile; fileRef = 388E06EC25C077880059066F /* api-docs.json */; };
 		3890CB9125BC7EFD00F09469 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3890CB9025BC7EFD00F09469 /* AppDelegate.swift */; };
 		3890CB9325BC7EFD00F09469 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3890CB9225BC7EFD00F09469 /* ViewController.swift */; };
@@ -16,6 +18,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		047D529725F204A80064BB14 /* SGModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SGModels.swift; sourceTree = "<group>"; };
+		047D529A25F23FCB0064BB14 /* OldVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OldVC.swift; sourceTree = "<group>"; };
 		388E06EC25C077880059066F /* api-docs.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "api-docs.json"; sourceTree = "<group>"; };
 		3890CB8D25BC7EFD00F09469 /* SwaggerGenerator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwaggerGenerator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3890CB9025BC7EFD00F09469 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -60,6 +64,8 @@
 				388E06EC25C077880059066F /* api-docs.json */,
 				3890CB9025BC7EFD00F09469 /* AppDelegate.swift */,
 				3890CB9225BC7EFD00F09469 /* ViewController.swift */,
+				047D529725F204A80064BB14 /* SGModels.swift */,
+				047D529A25F23FCB0064BB14 /* OldVC.swift */,
 				3890CB9425BC7EFE00F09469 /* Assets.xcassets */,
 				3890CB9625BC7EFE00F09469 /* Main.storyboard */,
 				3890CB9925BC7EFE00F09469 /* Info.plist */,
@@ -146,6 +152,8 @@
 			files = (
 				3890CB9325BC7EFD00F09469 /* ViewController.swift in Sources */,
 				3890CB9125BC7EFD00F09469 /* AppDelegate.swift in Sources */,
+				047D529B25F23FCB0064BB14 /* OldVC.swift in Sources */,
+				047D529825F204A80064BB14 /* SGModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
