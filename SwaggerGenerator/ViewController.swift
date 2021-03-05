@@ -82,6 +82,7 @@ class ViewController: NSViewController {
 
 
         import Foundation
+        import SightKit
 
 
         /** 参数处理方式（where to put the parameter
@@ -326,6 +327,9 @@ class ViewController: NSViewController {
                     let keyFix = propertyKey.keyFix
                     if propertyValue["type"].stringValue == "array"{
                         var elementType = propertyValue["items"]["originalRef"].stringValue.classFix
+                        if elementType.count == 0 {
+                            elementType = propertyValue["items"]["type"].stringValue.typeFix
+                        }
                         if elementType.count == 0 { elementType = "Any" }
                         str += """
                             public var \(keyFix):[\(elementType)] = []
@@ -346,7 +350,69 @@ class ViewController: NSViewController {
                         """
                     }
                 }
+                
                 str += """
+
+                    required convenience init(json:SKJSON) {
+                        self.init()
+
+                """
+                
+                for (_,propertyKey) in pKeys.enumerated(){
+                    let propertyValue = value["properties"][propertyKey]
+                    let keyFix = propertyKey.keyFix
+                    if propertyValue["type"].stringValue == "array"{
+                        var elementType = propertyValue["items"]["originalRef"].stringValue.classFix
+                        if elementType.count > 0 {
+                            str += """
+                                    for value in json["\(keyFix)"].arrayValue{
+                                        \(keyFix).append(\(elementType)(json: value))
+                                    }
+
+                            """
+                        }
+                        else {
+                            elementType = propertyValue["items"]["type"].stringValue.jsonValueFix
+                            if (elementType.count > 0){
+                                str += """
+                                    for value in json["\(keyFix)"].arrayValue{
+                                        \(keyFix).append(value.\(elementType))
+                                    }
+
+                            """
+                            }else{
+                                str += """
+                                    //\(keyFix) = json["\(keyFix)"]//解析缺陷
+
+                            """
+                                print("解析缺陷位置 ： ",className,keyFix)
+                            }
+                        }
+                    }
+                    else {
+                        var elementType = propertyValue["originalRef"].stringValue.classFix
+                        if elementType.count > 0 {
+                            str += """
+                                    \(keyFix) = \(elementType)(json:json["\(keyFix)"])
+
+                            """
+                        }
+                        else{
+                            elementType = propertyValue["type"].stringValue.jsonValueFix
+                            str += """
+                                    \(keyFix) = json["\(keyFix)"].\(elementType)
+
+                            """
+                            
+                            if elementType == propertyValue["type"].stringValue {
+                                print("解析缺陷位置 ： ",className,keyFix)
+                            }
+                        }
+                    }
+                }
+                
+                str += """
+                    }
                 }
                 """
             }else{
@@ -510,6 +576,24 @@ extension String {
         }
         if (self == "number"){
             return "Float"
+        }
+        if (self == "object"){
+            return "Any"
+        }
+        return self
+    }
+    var jsonValueFix:String {
+        if (self == "string"){
+            return "stringValue"
+        }
+        if (self == "integer"){
+            return "intValue"
+        }
+        if (self == "array"){
+            return "arrayValue"
+        }
+        if (self == "number"){
+            return "floatValue"
         }
         return self
     }
