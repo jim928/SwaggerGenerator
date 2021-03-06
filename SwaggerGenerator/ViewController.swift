@@ -166,23 +166,344 @@ class ViewController: NSViewController {
                 }
                 
                 //处理样例 "/brand/detail/{brandId}"
-                let array = itemName.components(separatedBy: "/{")
-                if array.count >= 2 {
-                    itemName = array.first!
-                }
-                
-                itemName = itemName.replacingOccurrences(of: "/", with: "_")
+                itemName = itemName.replacingOccurrences(of: "/{", with: "_").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "}", with: "")
                 itemName = itemName+"_"+methodItem.method
 
+                //summary
+                var desStr = methodItem.summary ?? "";
+                if (methodItem.tags.count > 0){
+                    desStr += "  ("
+                    for tag in methodItem.tags {
+                        for (name,des) in self.jsonModel.tags {
+                            if tag == name {
+                                desStr += des + ","
+                            }
+                        }
+                    }
+                    if desStr.hasSuffix(",") {
+                        desStr = desStr.subString(from: 0, length: desStr.count-2)
+                    }
+                    desStr += ")"
+                }
+                
+                //参数说明
+                str.newLine(2)
+                let params = methodItem.parameters
+                if (params.count > 0){
+                    str += """
+                    /** \(desStr)
+                    ## 参数说明
+                    ```
+                """
+                    str.newLine()
+                    
+                    for paramItem in params {
+                        str.addSpace(1)
+                        str += "   \(paramItem.name.orEmpty):\(paramItem.type.orEmpty.typeFix)"
+                        if paramItem.required.orFalse {
+                            str += " required"
+                        }
+                        if paramItem.default != nil {
+                            str += " default:\(paramItem.default!)"
+                        }
+                        if paramItem.description.orEmpty.count > 0 {
+                            str += " " + paramItem.description.orEmpty
+                        }
+                        str.newLine()
+                    }
+                    str += """
+                        */
+                    """
+                }else{
+                    str += "    /// \(desStr)"
+                }
+
+                //类
+                str += """
+
+                        public class \(itemName):SGCommonUrlProtocol {
+                            public var url = "\(pathItem.path)"
+                            public var method = "\(methodItem.method)"
+                    """
+                str.newLine()
+                
+                var paramsArray:[SGParamItem] = []
+                if (params.count > 0){
+                    str += """
+                            public var paramMap:[String:SGParamItem] = [
+                    """
+                    for (_,paramItem) in params.enumerated(){
+                        str.newLine()
+                        var positionStr = ".inBody"
+                        var position = SGParamPosition.inBody
+                        
+                        let isRequiredStr = paramItem.required.orFalse ? "true" : "false"
+                        let isRequired = paramItem.required.orFalse
+                        
+                        if (paramItem.in.orEmpty == "query") {
+                            positionStr = ".inQuery"
+                            position = .inQuery
+                        }
+                        if (paramItem.in.orEmpty == "path") {
+                            positionStr = ".inPath"
+                            position = .inPath
+                        }
+                        if (paramItem.in.orEmpty == "header") {
+                            positionStr = ".header"
+                            position = .inHeader
+                        }
+                        
+                        var elementType = paramItem.schema?.originalRef.orEmpty.classFix ?? ""
+                        if elementType.count == 0 {
+                            if paramItem.type.orEmpty == "array" {
+                                elementType = "[\((paramItem.items?.type).orEmpty.typeFix)]"
+                            }else{
+                                elementType = paramItem.type.orEmpty.typeFix
+                                
+                                if elementType == "ref"{
+                                    elementType = "Int"
+                                }
+                            }
+                        }
+                        if elementType.count == 0 || elementType == "object" {
+                            elementType = "Any"
+                        }
+
+                        
+                        str += """
+                                    "\(paramItem.name.orEmpty)":SGParamItem(name: "\(paramItem.name.orEmpty)", typeStr: "\(elementType)", paramPosition: \(positionStr), isRequired: \(isRequiredStr), value: nil),
+                        """
+                        
+                        paramsArray.append(SGParamItem(name: paramItem.name.orEmpty, typeStr: elementType, paramPosition: position, isRequired: isRequired, value: nil))
+                    }
+                    str.newLine()
+                    str += """
+                            ]
+                    """
+                    str.newLine()
+                }else{
+                    str += """
+                            public var paramMap:[String:SGParamItem] = [:]
+
+                    """
+                }
+                str += """
+                    }
+                """
+                
+                self.pathArray.append((className: itemName, url: pathItem.path, method: methodItem.method, paramMap: paramsArray))
 
             }
         }
+        
+        str += """
+
+
+            }
+            """
+
+        //写入文件 AppURLDefines
+        let data1 = str.data(using: .utf8)
+        data1?.saveToPath(path: documentPath + "/AppURLDefines.swift")
     }
     func makeModelFile(){
-        
+        //数据model
+        var str = """
+        //
+        //  AppModelDefines.swift
+        //
+        //
+        //  Created by SwaggerGenerator on \(Date().stringWith(format: .yyyy_MM_ddHHmmssSSS))
+        //
+
+
+        import Foundation
+        import SightKit
+
+        """
+
+        for define in self.jsonModel.definitions {
+            let className = define.title.orEmpty.classFix
+            let type = define.type.orEmpty
+            if type == "object" {
+                str += """
+
+                public class \(className): SGResponseItem {
+
+                """
+                
+                for property in define.properties {
+                    let propertyDes = property.description.orEmpty
+                    if propertyDes.count > 0 {
+                        str += """
+                            /// \(propertyDes)
+
+                        """
+                    }
+                    let keyFix = property.name.orEmpty.keyFix
+                    if property.type.orEmpty == "array"{
+                        var elementType = (property.items?.originalRef).orEmpty.classFix
+                        if elementType.count == 0 {
+                            elementType = (property.items?.type).orEmpty.typeFix
+                        }
+                        if elementType.count == 0 { elementType = "Any" }
+                        str += """
+                            public var \(keyFix):[\(elementType)] = []
+
+                        """
+                    }
+                    else {
+                        var elementType = property.originalRef.orEmpty.classFix
+                        if elementType.count == 0 {
+                            elementType = property.type.orEmpty.typeFix
+                        }
+                        if elementType.count == 0 || elementType == "object" {
+                            elementType = "Any"
+                        }
+                        str += """
+                            public var \(keyFix):\(elementType)?
+
+                        """
+                    }
+                }
+                
+                str += """
+
+                    required convenience init(json:SKJSON) {
+                        self.init()
+
+                """
+                
+                for property in define.properties {
+                    let keyFix = property.name.orEmpty.keyFix
+                    if property.type.orEmpty == "array"{
+                        var elementType = (property.items?.originalRef).orEmpty.classFix
+                        if elementType.count > 0 {
+                            str += """
+                                    for value in json["\(keyFix)"].arrayValue{
+                                        \(keyFix).append(\(elementType)(json: value))
+                                    }
+
+                            """
+                        }
+                        else {
+                            elementType = (property.items?.type).orEmpty.jsonValueFix
+                            if (elementType.count > 0){
+                                str += """
+                                    for value in json["\(keyFix)"].arrayValue{
+                                        \(keyFix).append(value.\(elementType))
+                                    }
+
+                            """
+                            }else{
+                                str += """
+                                    //\(keyFix) = json["\(keyFix)"]//解析缺陷
+
+                            """
+                                print("解析缺陷位置 ： ",className,keyFix)
+                            }
+                        }
+                    }
+                    else {
+                        var elementType = property.originalRef.orEmpty.classFix
+                        if elementType.count > 0 {
+                            str += """
+                                    \(keyFix) = \(elementType)(json:json["\(keyFix)"])
+
+                            """
+                        }
+                        else{
+                            elementType = property.type.orEmpty.jsonValueFix
+                            str += """
+                                    \(keyFix) = json["\(keyFix)"].\(elementType)
+
+                            """
+                            
+                            if elementType == property.type.orEmpty {
+                                print("解析缺陷位置 ： ",className,keyFix)
+                            }
+                        }
+                    }
+                }
+                
+                str += """
+                    }
+                }
+                """
+            }else{
+                str.newLine()
+                str += """
+                public typealias \(className) = \(type.typeFix)
+                """
+            }
+        }
+
+        //写入文件 AppURLDefines
+        let data1 = str.data(using: .utf8)
+        data1?.saveToPath(path: documentPath + "/AppModelDefines.swift")
     }
     func makeRequestFile(){
+        //组装 所有请求
+        //预设文件开头
+        var rqstr = """
+        //
+        //  AppRequestDefines.swift
+        //
+        //
+        //  Created by SwaggerGenerator on \(Date().stringWith(format: .yyyy_MM_ddHHmmssSSS))
+        //
+
+
+        import Foundation
+        import SightKit
+
+        func sgRequest(item:SGCommonUrlProtocol,result:@escaping ((SKResult)->Void)){
+            let rq = SKRq().wUrl(hostUrl + item.url).wMethod(item.method)
+            for element in item.paramMap.values {
+                if let value = element.value , let  position = SKParamPosition.init(rawValue:element.paramPosition.rawValue) {
+                    #warning("todo value 可能是 自定义对象 待处理")
+                    rq.wParam(key: element.name, value: value, position: position)
+                }
+            }
+            rq.resume(result)
+        }
+
+        """
+        for (_,path) in self.pathArray.enumerated(){
+            rqstr += """
+
+            public extension SGUrl.\(path.className) {
+                static func rq(
+            """
+            
+            for (_,param) in path.paramMap.enumerated(){
+                rqstr += "\(param.name):\(param.typeStr)?,"
+            }
+            
+            rqstr += "result:@escaping ((SKResult)->Void)"
+            
+            rqstr += "){"
+            rqstr += """
+                    
+                    let item = SGUrl.\(path.className)()
+            """
+            for (_,param) in path.paramMap.enumerated(){
+                rqstr += """
+
+                    item.paramMap["\(param.name)"]?.value = \(param.name)
+            """
+            }
+            rqstr += """
+
+                    sgRequest(item: item, result: result)
+                }
+            }
+            """
+        }
         
+        //写入文件 AppURLDefines
+        let data2 = rqstr.data(using: .utf8)
+        data2?.saveToPath(path: documentPath + "/AppRequestDefines.swift")
     }
 }
 

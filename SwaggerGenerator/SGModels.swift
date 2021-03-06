@@ -27,13 +27,15 @@ class SGModel {
         for value in json["tags"].arrayValue {
             tags[value["name"].stringValue] = value["description"].string
         }
-        for (key,value) in json["paths"].dictionaryValue {
+        for key in json["paths"].dictionaryValue.keys.sorted() {
+            let value = json["paths"][key]
             let p = SG_path(json: value)
             p.path = key
             paths.append(p)
         }
         self.securityDefinitions = SG_securityDefinitions(json: json["securityDefinitions"])
-        for (_,value) in json["definitions"].dictionaryValue {
+        for key in json["definitions"].dictionaryValue.keys.sorted() {
+            let value = json["definitions"][key]
             let p = SG_definition(json: value)
             definitions.append(p)
         }
@@ -71,7 +73,8 @@ class SG_path {
     
     required convenience public init(json:SKJSON) {
         self.init()
-        for (key,value) in json.dictionaryValue {
+        for key in json.dictionaryValue.keys.sorted() {
+            let value = json[key]
             let p = SG_path_method(json: value)
             p.method = key
             methods.append(p)
@@ -109,7 +112,8 @@ class SG_path_method {
         for value in json["parameters"].arrayValue {
             parameters.append(SG_path_method_parameter(json: value))
         }
-        for (key,value) in json["responses"].dictionaryValue{
+        for key in json["responses"].dictionaryValue.keys.sorted(){
+            let value = json["responses"][key]
             let r = SG_path_method_response(json: value)
             r.code = key
             responses.append(r)
@@ -124,6 +128,7 @@ class SG_path_method_parameter{
     var description:String?
     var required:Bool?
     var type:String?
+    var `default`:Int?
     var format:String?
     var schema:SG_path_method_parameter_schema?
     var items:SG_path_method_parameter_items?
@@ -135,6 +140,7 @@ class SG_path_method_parameter{
         self.description = json["description"].string
         self.required = json["required"].boolValue
         self.type = json["type"].string
+        self.`default` = json["default"].int
         self.format = json["format"].string
         self.schema = SG_path_method_parameter_schema(json: json["schema"])
         self.items = SG_path_method_parameter_items(json: json["items"])
@@ -155,11 +161,12 @@ class SG_path_method_parameter_items{
 class SG_path_method_parameter_schema{
     var originalRef:String?
     var ref:String?
-    
+    var type:String?
     required convenience public init(json:SKJSON) {
         self.init()
         self.originalRef = json["originalRef"].string
         self.ref = json["$ref"].string
+        self.type = json["type"].string
     }
 }
 class SG_path_method_response{
@@ -203,7 +210,8 @@ class SG_definition{
         self.init()
         self.type = json["type"].string
         self.required = json["required"].string
-        for (key,value) in json["properties"].dictionaryValue{
+        for key in json["properties"].dictionaryValue.keys.sorted(){
+            let value = json["properties"][key]
             let p = SG_definition_property(json: value)
             p.name = key
             properties.append(p)
@@ -214,6 +222,7 @@ class SG_definition{
 
 class SG_definition_property{
     var name:String?
+    
     var type:String?
     var format:String?
     var description:String?
