@@ -11,6 +11,7 @@ import SightKit
 //https://wdpm.gitbook.io/swagger-documentation/swagger-specification/describing-parameters
 class ViewController: NSViewController {
 
+    var tableview:NSTableView!
     var textField:NSTextField!
     var panel:NSOpenPanel = NSOpenPanel()
     var pathArray:[(className:String,url:String,method:String,paramMap:[SGParamItem])] = []
